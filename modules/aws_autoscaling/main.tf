@@ -13,16 +13,16 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.67.0"
+      version = "~> 6.14.1"
     }
     tls = {
       source  = "hashicorp/tls"
-      version = "~> 4.0.4"
+      version = "~> 4.1.0"
     }
   }
 }
 
-# Get list of AWS availaibility zones in current region
+# Get list of AWS availability zones in current region
 data "aws_availability_zones" "available" {}
 
 # Get latest Amazon Machine Image of "Amazon Linux"
@@ -69,7 +69,7 @@ resource "aws_key_pair" "generated" {
 # Create AWS security group, open 22 port
 resource "aws_security_group" "allow_ssh" {
   name        = "allow_ssh"
-  description = "Allow SSH inbound trafic"
+  description = "Allow SSH inbound traffic"
   vpc_id      = var.vpc_id
 
   dynamic "ingress" {

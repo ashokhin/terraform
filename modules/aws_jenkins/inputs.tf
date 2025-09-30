@@ -44,7 +44,7 @@ variable "acme_certificate" {
 variable "tls_enabled" {
   type        = bool
   default     = false
-  description = "If TLS enabled than create certificate certificate from variable `acme_certificate`"
+  description = "If TLS enabled than create certificate from variable `acme_certificate`"
 }
 
 variable "jenkins_fqdn" {

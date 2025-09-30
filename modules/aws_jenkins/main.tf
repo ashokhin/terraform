@@ -2,16 +2,16 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.67.0"
+      version = "~> 6.14.1"
     }
     tls = {
       source  = "hashicorp/tls"
-      version = "~> 4.0.4"
+      version = "~> 4.1.0"
     }
   }
 }
 
-# Get list of AWS availaibility zones in current region
+# Get list of AWS availability zones in current region
 data "aws_availability_zones" "available" {}
 
 # Get latest Amazon Machine Image of "Ubuntu Linux"
@@ -24,7 +24,7 @@ data "aws_ami" "latest_ubuntu_linux" {
   }
 }
 
-# Generate IAM assume role policy document for EC2
+# Search for IAM assume role policy document for EC2
 data "aws_iam_policy_document" "certbot_assume_document" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -62,7 +62,7 @@ resource "aws_iam_policy" "certbot_policy" {
     ]
   })
 
-  tags = merge(var.tags, { Name = "tf-plcy-${var.env}-cert" })
+  tags = merge(var.tags, { Name = "tf-iam-policy-${var.env}-cert" })
 }
 
 # Create IAM role with policy from generated data
@@ -70,8 +70,7 @@ resource "aws_iam_role" "certbot" {
   name                = "EC2RenewJenkinsACMCertsRole"
   assume_role_policy  = data.aws_iam_policy_document.certbot_assume_document.json
   managed_policy_arns = [aws_iam_policy.certbot_policy.arn]
-
-  tags = merge(var.tags, { Name = "tf-iam-${var.env}-cert" })
+  tags                = merge(var.tags, { Name = "tf-iam-role-${var.env}-cert" })
 }
 
 resource "aws_iam_instance_profile" "certbot" {
@@ -81,8 +80,7 @@ resource "aws_iam_instance_profile" "certbot" {
 
 # Generate SSH key
 resource "tls_private_key" "ssh" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
+  algorithm = "ED25519"
 }
 
 # Write SSH key to AWS key pairs
@@ -94,7 +92,7 @@ resource "aws_key_pair" "generated" {
 # Create AWS security group, with open internal tcp ports
 resource "aws_security_group" "internal" {
   name        = "${var.module_name}-${var.env}-open-internal-ports"
-  description = "Allow ${var.module_name}-${var.env} inbound trafic"
+  description = "Allow ${var.module_name}-${var.env} inbound traffic"
   vpc_id      = var.vpc_id
 
   dynamic "ingress" {
@@ -126,7 +124,7 @@ resource "aws_security_group" "internal" {
 # Create AWS security group, with open external tcp ports
 resource "aws_security_group" "external" {
   name        = "${var.module_name}-${var.env}-open-external-ports"
-  description = "Allow ${var.module_name}-${var.env} inbound trafic"
+  description = "Allow ${var.module_name}-${var.env} inbound traffic"
   vpc_id      = var.vpc_id
 
   dynamic "ingress" {
@@ -178,12 +176,12 @@ resource "aws_instance" "jenkins" {
     inline = [
       # update repos & upgrade packages
       "sudo apt update && sudo apt -y upgrade",
-      # Install Java 11 JDK
-      "sudo apt install -y openjdk-11-jdk",
+      # Install Java 21 JDK
+      "sudo apt install -y fontconfig openjdk-21-jre",
       # Add Jenkins repo key
-      "curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null",
-      # Add Jenkins repo
-      "echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null",
+      "curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /etc/apt/keyrings/jenkins-keyring.asc > /dev/null",
+      # Add Jenkins LTS repo
+      "echo deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null",
       # Update repos
       "sudo apt update",
       # Install Jenkins
@@ -260,7 +258,7 @@ resource "aws_lb_listener" "alb_jenkins" {
   }
 
   tags = merge(var.tags, {
-    Name = "tf-lsnr-${var.module_name}-${var.env}"
+    Name = "tf-lb-listener-${var.module_name}-${var.env}"
   })
 }
 
